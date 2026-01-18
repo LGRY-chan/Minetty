@@ -1,6 +1,7 @@
 package org.lgry.common.request;
 
 import com.google.gson.JsonObject;
+import io.netty.channel.Channel;
 import org.lgry.common.Packet;
 
 import java.util.Map;

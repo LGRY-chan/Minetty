@@ -10,24 +10,25 @@ import org.lgry.common.Packet;
 import org.lgry.common.request.PendingRequestManager;
 import org.lgry.common.request.RequestCallbackManager;
 
-import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.Function;
 
-public class Handler extends SimpleChannelInboundHandler<ByteBuf> {
+@ChannelHandler.Sharable
+public class MainHandler extends SimpleChannelInboundHandler<ByteBuf> {
 
     private final PendingRequestManager PRManager;
     private final RequestCallbackManager RCManager;
+    private Function<JsonObject, JsonObject> HANDSHAKE_CALLBACK;
     private final ExecutorService WORKER_POOL = Executors.newFixedThreadPool(4);
 
-    public Handler(PendingRequestManager PRManager, RequestCallbackManager RCManager) {
+    public MainHandler(PendingRequestManager PRManager, RequestCallbackManager RCManager) {
         this.PRManager = PRManager;
         this.RCManager = RCManager;
     }
 
-    public Handler() {
+    public MainHandler() {
         this.PRManager = new PendingRequestManager();
         this.RCManager = new RequestCallbackManager();
     }
@@ -35,9 +36,11 @@ public class Handler extends SimpleChannelInboundHandler<ByteBuf> {
     public PendingRequestManager getPRManager() {
         return this.PRManager;
     }
-
     public RequestCallbackManager getRCManager() {
         return this.RCManager;
+    }
+    public void setHandshakeCallback(Function<JsonObject, JsonObject> callback) {
+        this.HANDSHAKE_CALLBACK = callback;
     }
 
     @Override
@@ -79,7 +82,23 @@ public class Handler extends SimpleChannelInboundHandler<ByteBuf> {
                 }
             }
             case RESPONSE -> this.PRManager.complete(packet.uuid, packet.content);
-            case HANDSHAKE -> {}
+            case HANDSHAKE -> {
+
+                // run async
+                CompletableFuture<JsonObject> future = CompletableFuture.supplyAsync(() -> {
+                    return HANDSHAKE_CALLBACK.apply(packet.content);
+                }, WORKER_POOL);
+
+                // complete task
+                future.thenAccept(r -> {
+                    future.complete(r);
+                    Packet responsePacket = packet.getResponsePacket(r);
+                    context.executor().execute(() -> {
+                        context.writeAndFlush(responsePacket.encode());
+                    });
+                });
+
+            }
 
         }
     }

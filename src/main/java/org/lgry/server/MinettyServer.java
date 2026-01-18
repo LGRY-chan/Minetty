@@ -6,13 +6,13 @@ import io.netty.channel.ChannelFuture;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
-import org.lgry.common.handler.Handler;
+import org.lgry.common.handler.MainHandler;
 import org.lgry.common.handler.ChannelInitializer;
 
 import java.util.function.Function;
 
 public class MinettyServer {
-    private final Handler handler = new Handler();
+    private final MainHandler handler = new MainHandler();
 
     public MinettyServer() {
     }
@@ -23,7 +23,7 @@ public class MinettyServer {
         EventLoopGroup workerGroup = new NioEventLoopGroup();
 
         try {
-            // 서버 부트스트랩
+
             ServerBootstrap bootstrap = new ServerBootstrap();
 
             bootstrap
@@ -35,8 +35,6 @@ public class MinettyServer {
             ChannelFuture future = bootstrap.bind(8080).sync();
 
 
-
-            // 서버 종료까지 대기
             future.channel().closeFuture().sync();
 
         } catch (Exception e) {
@@ -50,5 +48,9 @@ public class MinettyServer {
 
     public void register(String key, Function<JsonObject, JsonObject> callback) {
         this.handler.getRCManager().register(key, callback);
+    }
+
+    public void setHandShake(Function<JsonObject, JsonObject> callback) {
+        this.handler.setHandshakeCallback(callback);
     }
 }

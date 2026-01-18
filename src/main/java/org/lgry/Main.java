@@ -20,6 +20,10 @@ public class Main {
             json.addProperty("I am", 1854);
             return json;
         });
+        server.setHandShake(json -> {
+            json.addProperty("what", "the fuck");
+            return json;
+        });
         server.start();
         logger.info(packet.toString());
         logger.info(newPacket.toString());
